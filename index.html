@@ -16,15 +16,62 @@
   <div class="hud-top">
     <div class="hud-place"><span id="hud-city">墨尔本</span> · <b id="hud-area">Box Hill</b></div>
     <div class="hud-right">
-      <button id="btn-center" class="chip">⌖ 回到起点</button>
+      <button id="btn-quests" class="chip">📜 任务 <span id="quest-badge" class="badge hidden">0</span></button>
+      <button id="btn-bag" class="chip">🎒 背包</button>
       <button id="btn-back" class="chip">← 换城市</button>
     </div>
   </div>
+  <div class="hud-mid">
+    <div id="hud-stats" class="stats"></div>
+    <div id="tracker" class="tracker hidden"></div>
+  </div>
   <div class="hud-bottom">
-    <div class="hint">点地面走路 · 拖动看地图 · 双指或滚轮缩放 · 点商店看名字</div>
+    <div class="hint">点地面走路 · 点 NPC 对话 · 拖动看地图 · 双指缩放</div>
     <div class="attrib">地图数据 © OpenStreetMap contributors</div>
   </div>
 </div>
+
+<!-- 对话面板 -->
+<div id="dialog" class="dialog hidden">
+  <div class="dialog-card">
+    <div class="dialog-portrait" id="dialog-portrait">🧑</div>
+    <div class="dialog-main">
+      <div class="dialog-head"><b id="dialog-name"></b> <span id="dialog-role" class="muted"></span></div>
+      <div class="dialog-text" id="dialog-text"></div>
+      <div class="dialog-options" id="dialog-options"></div>
+      <div class="dialog-next" id="dialog-next">点击继续 ▸</div>
+    </div>
+  </div>
+</div>
+
+<!-- 奖励 -->
+<div id="reward" class="modal hidden">
+  <div class="modal-card center">
+    <div class="reward-emoji">🎉</div>
+    <h3 id="reward-title">任务完成</h3>
+    <ul id="reward-list" class="reward-list"></ul>
+    <button id="reward-ok" class="btn btn-primary">收下</button>
+  </div>
+</div>
+
+<!-- 任务面板 -->
+<div id="panel-quests" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3>任务</h3><button class="chip" data-close="#panel-quests">关闭</button></div>
+    <div id="quests-body" class="panel-body"></div>
+    <button id="btn-reset" class="link small">清空存档重新开始</button>
+  </div>
+</div>
+
+<!-- 背包 -->
+<div id="panel-bag" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3>背包</h3><button class="chip" data-close="#panel-bag">关闭</button></div>
+    <div id="bag-body" class="panel-body"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
 
 <!-- 商家弹窗 -->
 <div id="poi" class="poi hidden">

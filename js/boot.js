@@ -4,7 +4,7 @@
     'https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js',
     'https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js',
   ];
-  const GAME = ['js/iso.js', 'js/pathfind.js', 'js/scene_select.js', 'js/scene_world.js', 'js/main.js'];
+  const GAME = ['js/iso.js', 'js/pathfind.js', 'js/quests.js', 'js/content_boxhill.js', 'js/ui.js', 'js/scene_select.js', 'js/scene_world.js', 'js/main.js'];
   function load(src) {
     return new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => fail(new Error(src)); document.head.appendChild(s); });
   }

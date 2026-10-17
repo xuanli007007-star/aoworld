@@ -22,7 +22,10 @@ js/main.js           Phaser 配置与场景注册
 js/iso.js            等距投影、几何工具、调色板、类型中文名
 js/pathfind.js       2 米网格与 A* 寻路
 js/scene_select.js   起始地选择：澳洲地图、城市投票
-js/scene_world.js    世界场景：地面、建筑、商家、角色、相机与输入
+js/scene_world.js    世界场景：地面、建筑、商家、角色、NPC、任务流程、相机与输入
+js/quests.js         任务引擎：存档、任务状态、步骤推进、效果结算、锚点解析
+js/content_boxhill.js Box Hill 的 NPC、任务、道具、优惠券
+js/ui.js             对话面板、任务面板、背包、HUD
 data/boxhill.json    预处理好的 Box Hill 地图数据
 tools/fetch_osm.js   从 Overpass API 拉取并预处理一个街区
 ```
@@ -46,6 +49,17 @@ node tools/fetch_osm.js boxhill
 - 角色：点地面走路，A* 寻路后拉直；拖动看地图；滚轮或双指缩放。
 - 起始地页：点其他城市投票，票数存本机。
 
+## 任务系统
+
+- NPC 站在真实地点旁边：贡茶店员在贡茶门口，火锅店老板在 Dragon Hot Pot，会计在 ATO 楼下。锚点写在内容文件里，运行时解析成坐标并挪到最近可走的格子。
+- 头顶 `!` 表示有任务可接，`?` 表示当前任务要找他。点 NPC 自动走过去再对话。
+- 步骤类型：`talk` 找人说话（可要求携带物品）、`choice` 选项（可带属性判定和花费）、`goto` 到达某点、`collect` 按任意顺序到达多个点。
+- 奖励：经验、金币、属性、道具、flag、优惠券。优惠券进背包，核销功能待做。
+- 存档在本机 localStorage，任务面板底部可以清空重来。
+- 首批内容：11 个 NPC，4 个主线任务（落地、找房、找工、凑分），7 个支线。
+
+调试：`?loop=timeout` 让游戏在页面不可见时也运行；控制台 `AO.Quest.state()` 看存档。
+
 ## 下一步
 
-任务系统（NPC 对话、选择、奖励，复用墨漂模拟器的事件引擎）、商家优惠券与核销、更多城区。
+商家优惠券的二维码与核销、商场内景、更多城区、账号与云存档。

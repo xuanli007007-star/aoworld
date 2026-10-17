@@ -17,9 +17,17 @@ AO.WorldScene = class extends Phaser.Scene {
     this.drawBuildings();
     this.drawPois();
     this.makeHero();
+    AO.resolveContent(this.D, this.grid);
+    this.drawNpcs();
     this.setupCamera();
     this.setupInput();
     this.setupHud();
+    AO.UI.bind({ track: (qid) => this.trackQuest(qid) });
+    AO.UI.updateHud();
+    this.questRing = this.add.circle(0, 0, 10).setStrokeStyle(3, 0xf2b134).setDepth(-39).setVisible(false);
+    this.tweens.add({ targets: this.questRing, scale: 1.6, alpha: 0.2, duration: 900, repeat: -1 });
+    this.refreshQuestMarkers();
+    this.arriveT = 0;
     this.setZoom(this.scale.width < 600 ? 1.15 : 1);
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('hud').classList.remove('hidden');
@@ -160,19 +168,19 @@ AO.WorldScene = class extends Phaser.Scene {
   }
 
   /* ---------- 角色 ---------- */
+  makePerson(key, hoodie, legsApart, hair) {
+    if (this.textures.exists(key)) return;
+    const g = this.make.graphics({ add: false });
+    const R = (x, y, w, h, c) => { g.fillStyle(c, 1); g.fillRect(x, y, w, h); };
+    R(3, 0, 8, 3, hair || 0x2b2b2b); R(3, 3, 8, 6, 0xf1c9a5); R(5, 5, 1, 1, 0x222222); R(8, 5, 1, 1, 0x222222);
+    R(2, 9, 10, 9, hoodie); R(0, 10, 2, 6, hoodie); R(12, 10, 2, 6, hoodie); R(0, 16, 2, 2, 0xf1c9a5); R(12, 16, 2, 2, 0xf1c9a5);
+    R(3, 18, 8, 5, 0x2f3d50);
+    if (legsApart) { R(2, 23, 3, 3, 0x2f3d50); R(9, 23, 3, 3, 0x2f3d50); R(1, 26, 4, 2, 0x222222); R(9, 26, 4, 2, 0x222222); }
+    else { R(3, 23, 3, 3, 0x2f3d50); R(8, 23, 3, 3, 0x2f3d50); R(3, 26, 3, 2, 0x222222); R(8, 26, 3, 2, 0x222222); }
+    g.generateTexture(key, 14, 28); g.destroy();
+  }
   makeHero() {
-    const mk = (key, legsApart) => {
-      if (this.textures.exists(key)) return;
-      const g = this.make.graphics({ add: false });
-      const R = (x, y, w, h, c) => { g.fillStyle(c, 1); g.fillRect(x, y, w, h); };
-      R(3, 0, 8, 3, 0x2b2b2b); R(3, 3, 8, 6, 0xf1c9a5); R(5, 5, 1, 1, 0x222222); R(8, 5, 1, 1, 0x222222);
-      R(2, 9, 10, 9, 0x1f7a5a); R(0, 10, 2, 6, 0x1f7a5a); R(12, 10, 2, 6, 0x1f7a5a); R(0, 16, 2, 2, 0xf1c9a5); R(12, 16, 2, 2, 0xf1c9a5);
-      R(3, 18, 8, 5, 0x2f3d50);
-      if (legsApart) { R(2, 23, 3, 3, 0x2f3d50); R(9, 23, 3, 3, 0x2f3d50); R(1, 26, 4, 2, 0x222222); R(9, 26, 4, 2, 0x222222); }
-      else { R(3, 23, 3, 3, 0x2f3d50); R(8, 23, 3, 3, 0x2f3d50); R(3, 26, 3, 2, 0x222222); R(8, 26, 3, 2, 0x222222); }
-      g.generateTexture(key, 14, 28); g.destroy();
-    };
-    mk('hero0', false); mk('hero1', true);
+    this.makePerson('hero0', 0x1f7a5a, false); this.makePerson('hero1', 0x1f7a5a, true);
     const start = this.spawnPoint();
     const c = this.grid.toCell(start.x, start.y), free = this.grid.nearestFree(c.cx, c.cy, 80) || c;
     const w = this.grid.toWorld(free.cx, free.cy);
@@ -182,6 +190,116 @@ AO.WorldScene = class extends Phaser.Scene {
     this.hero.wx = w.x; this.hero.wy = w.y;
     this.placeHero();
     this.path = []; this.animT = 0; this.frame = 0;
+  }
+  /* ---------- NPC ---------- */
+  drawNpcs() {
+    const ISO = AO.ISO; this.npcObjs = [];
+    const F = 'PingFang SC, Microsoft YaHei, sans-serif';
+    for (const n of AO.CONTENT.npcs) {
+      const key = 'npc_' + n.id; this.makePerson(key, n.color, false, 0x4a3b2f);
+      const p = ISO.toScreen(n.x, n.y);
+      const img = this.add.image(p.sx, p.sy, key).setOrigin(0.5, 1).setScale(1.4).setDepth(p.sy);
+      const shadow = this.add.ellipse(p.sx, p.sy - 1, 18, 8, 0x000000, 0.22).setDepth(p.sy - 0.5);
+      const name = this.add.text(p.sx, p.sy - 44, n.name, { fontFamily: F, fontSize: '11px', fontStyle: '700', color: '#ffffff', backgroundColor: 'rgba(27,42,58,.75)', padding: { x: 5, y: 2 } }).setOrigin(0.5, 1).setDepth(10002);
+      const mark = this.add.text(p.sx, p.sy - 62, '', { fontFamily: F, fontSize: '24px', fontStyle: '900', color: '#f2b134', stroke: '#1b2a3a', strokeThickness: 5 }).setOrigin(0.5, 1).setDepth(10003);
+      this.tweens.add({ targets: mark, y: mark.y - 6, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      const tap = () => { this.consumedTap = true; this.goTalk(n); };
+      img.setInteractive({ useHandCursor: true }).on('pointerup', tap);
+      name.setInteractive({ useHandCursor: true }).on('pointerup', tap);
+      this.npcObjs.push({ n, img, name, mark, shadow });
+    }
+  }
+  refreshQuestMarkers() {
+    for (const o of this.npcObjs) {
+      const act = AO.Quest.activeStepFor(o.n.id), av = AO.Quest.availableFor(o.n.id);
+      o.mark.setText(act ? '?' : av.length ? '!' : '').setColor(act ? '#7ec8ff' : '#f2b134');
+    }
+    this.updateTracker();
+  }
+  trackQuest(qid) { this.tracked = qid; this.updateTracker(); }
+  updateTracker() {
+    let q = AO.Quest.activeQuests().find(x => x.id === this.tracked) || AO.Quest.activeQuests()[0];
+    if (!q) { AO.UI.tracker(null); this.questRing.setVisible(false); this.trackTarget = null; return; }
+    this.tracked = q.id;
+    const ts = AO.Quest.targets().filter(t => t.q.id === q.id);
+    if (!ts.length) { AO.UI.tracker(q.title + '：' + AO.Quest.objectiveText(q)); this.questRing.setVisible(false); this.trackTarget = null; return; }
+    ts.sort((a, b) => Math.hypot(a.x - this.hero.wx, a.y - this.hero.wy) - Math.hypot(b.x - this.hero.wx, b.y - this.hero.wy));
+    const t = ts[0]; this.trackTarget = t;
+    const p = AO.ISO.toScreen(t.x, t.y); this.questRing.setPosition(p.sx, p.sy).setVisible(true);
+    AO.UI.tracker(`${q.title}：${AO.Quest.objectiveText(q)}`, Math.hypot(t.x - this.hero.wx, t.y - this.hero.wy));
+  }
+  goTalk(n) {
+    if (this.talking) return;
+    const d = Math.hypot(n.x - this.hero.wx, n.y - this.hero.wy);
+    if (d <= 6) { this.talk(n); return; }
+    this.pendingTalk = n;
+    if (!this.walkTo(n.x, n.y + 3)) this.pendingTalk = null;
+  }
+  async talk(n) {
+    if (this.talking) return;
+    this.talking = true; this.path = []; this.pendingTalk = null;
+    this.hero.setFlipX(AO.ISO.toScreen(n.x - this.hero.wx, n.y - this.hero.wy).sx < 0);
+    try {
+      const act = AO.Quest.activeStepFor(n.id);
+      if (act) await this.runStep(n, act.q, act.step);
+      else {
+        const av = AO.Quest.availableFor(n.id);
+        if (av.length) await this.offerQuest(n, av[0]);
+        else { const lines = n.idle || ['……']; const i = AO.Quest.talkCount(n.id) % lines.length; AO.Quest.noteTalk(n.id); await AO.UI.say(n, lines[i]); }
+      }
+    } catch (e) { console.error(e); }
+    AO.UI.close(); this.talking = false; this.refreshQuestMarkers(); AO.UI.updateHud();
+  }
+  async offerQuest(n, q) {
+    await AO.UI.say(n, q.intro);
+    const i = await AO.UI.choose(n, q.ask || '接下这个任务吗？', [{ text: q.acceptText || '接了' }, { text: '我再想想' }]);
+    if (i !== 0) { await AO.UI.say(n, q.declineText || '行，想好了再来。'); return; }
+    AO.Quest.start(q.id); AO.UI.toast('接到任务：' + q.title); this.trackQuest(q.id);
+    const step = AO.Quest.currentStep(q);
+    if (step && (step.type === 'talk' || step.type === 'choice') && step.npc === n.id) await this.runStep(n, q, step);
+  }
+  async runStep(n, q, step) {
+    if (step.type === 'talk') {
+      if (step.requires && !AO.Quest.hasItems(step.requires)) { await AO.UI.say(n, step.missing || '东西还没齐。'); return; }
+      await AO.UI.say(n, step.lines || []);
+      const fx = AO.Quest.applyEffects(step.effects); if (fx.length) AO.UI.toast(AO.UI.fxChips(fx));
+      await this.finishStep(n, q);
+    } else if (step.type === 'choice') {
+      const i = await AO.UI.choose(n, step.prompt, step.options);
+      const o = step.options[i];
+      let fx = AO.Quest.applyEffects(o.effects), retry = !!o.retry;
+      if (o.roll) {
+        const ok = Math.random() < AO.Quest.rollChance(o.roll); const br = ok ? o.roll.success : o.roll.fail;
+        await AO.UI.say(n, br.text); fx = fx.concat(AO.Quest.applyEffects(br.effects)); if (!ok && br.retry) retry = true;
+      } else if (o.result) await AO.UI.say(n, o.result);
+      if (fx.length) AO.UI.toast(AO.UI.fxChips(fx));
+      AO.UI.updateHud();
+      if (!retry) await this.finishStep(n, q);
+    }
+  }
+  async finishStep(n, q) {
+    const r = AO.Quest.advance(q.id);
+    if (r.done) { if (q.done) await AO.UI.say(n || AO.Quest.npc(q.giver), q.done); AO.UI.close(); await AO.UI.rewards('任务完成：' + q.title, r.rewards); }
+    else { const next = AO.Quest.currentStep(q); if (n && next && (next.type === 'talk' || next.type === 'choice') && next.npc === n.id) await this.runStep(n, q, next); }
+    this.refreshQuestMarkers(); AO.UI.updateHud();
+  }
+  async handleArrivals(evs) {
+    if (this.talking) return; this.talking = true; this.path = [];
+    try {
+      for (const ev of evs) {
+        if (ev.type === 'goto') {
+          if (ev.step.onArrive) await AO.UI.say(null, ev.step.onArrive);
+          const fx = AO.Quest.applyEffects(ev.step.effects); if (fx.length) AO.UI.toast(AO.UI.fxChips(fx));
+          AO.UI.close(); await this.finishStep(null, ev.q);
+        } else {
+          const fx = AO.Quest.applyEffects(ev.point.effects);
+          await AO.UI.say(null, { who: 'sys', text: ev.point.line || ('✓ ' + ev.point.label) });
+          if (fx.length) AO.UI.toast(AO.UI.fxChips(fx));
+          AO.UI.close(); if (ev.all) await this.finishStep(null, ev.q);
+        }
+      }
+    } catch (e) { console.error(e); }
+    AO.UI.close(); this.talking = false; this.refreshQuestMarkers(); AO.UI.updateHud();
   }
   spawnPoint() {
     const r = this.rect, inside = (p) => p[0] > r.minX && p[0] < r.maxX && p[1] > r.minY && p[1] < r.maxY;
@@ -211,8 +329,18 @@ AO.WorldScene = class extends Phaser.Scene {
   }
   update(time, delta) {
     this.handlePinch();
-    if (!this.path || !this.path.length) { if (this.hero && this.hero.texture.key !== 'hero0') this.hero.setTexture('hero0'); return; }
-    const speed = 7 * delta / 1000; // 米/帧
+    this.arriveT += delta;
+    if (this.arriveT > 200 && !this.talking) {
+      this.arriveT = 0;
+      if (this.moving) { const evs = AO.Quest.arrive(this.hero.wx, this.hero.wy); if (evs.length) this.handleArrivals(evs); if (this.trackTarget) this.updateTracker(); }
+    }
+    if (!this.path || !this.path.length) {
+      if (this.hero && this.hero.texture.key !== 'hero0') this.hero.setTexture('hero0');
+      if (this.moving) { this.moving = false; if (this.pendingTalk) { const n = this.pendingTalk; this.pendingTalk = null; if (Math.hypot(n.x - this.hero.wx, n.y - this.hero.wy) <= 8) this.talk(n); else this.toast('走不到' + n.name + '那边'); } }
+      return;
+    }
+    this.moving = true;
+    const speed = (AO.Quest.state().flags.car ? 15 : 10) * delta / 1000; // 米/帧
     let remain = speed;
     while (remain > 0 && this.path.length) {
       const t = this.path[0]; const dx = t.x - this.hero.wx, dy = t.y - this.hero.wy; const d = Math.hypot(dx, dy);
@@ -262,7 +390,7 @@ AO.WorldScene = class extends Phaser.Scene {
       if (this.dragging) { cam.scrollX = this.down.sx - dx / cam.zoom; cam.scrollY = this.down.sy - dy / cam.zoom; }
     });
     this.input.on('pointerup', (p) => {
-      if (this.pinching || this.dragging || this.consumedTap || !this.down) { this.down = null; return; }
+      if (this.pinching || this.dragging || this.consumedTap || !this.down || this.talking) { this.down = null; return; }
       this.down = null;
       const wp = cam.getWorldPoint(p.x, p.y); const w = AO.ISO.toWorld(wp.x, wp.y);
       this.walkTo(w.x, w.y);
@@ -281,7 +409,6 @@ AO.WorldScene = class extends Phaser.Scene {
   setupHud() {
     document.getElementById('hud-city').textContent = this.city.name;
     document.getElementById('hud-area').textContent = this.D.area.name;
-    document.getElementById('btn-center').onclick = () => { const sp = this.spawnPoint(); this.walkTo(sp.x, sp.y); this.cameras.main.startFollow(this.hero, true, 0.08, 0.08); };
     document.getElementById('btn-back').onclick = () => { document.getElementById('poi').classList.add('hidden'); this.scene.start('Select'); };
     document.getElementById('poi-close').onclick = () => document.getElementById('poi').classList.add('hidden');
     document.getElementById('poi-go').onclick = () => { document.getElementById('poi').classList.add('hidden'); if (this.currentPoi) this.walkTo(this.currentPoi.x, this.currentPoi.y); };
