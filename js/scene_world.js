@@ -22,6 +22,7 @@ AO.WorldScene = class extends Phaser.Scene {
     this.setupCamera();
     this.setupInput();
     this.setupHud();
+    AO.Quest.flushPendingCoupons();
     AO.UI.bind({ track: (qid) => this.trackQuest(qid) });
     AO.UI.updateHud();
     this.questRing = this.add.circle(0, 0, 10).setStrokeStyle(3, 0xf2b134).setDepth(-39).setVisible(false);

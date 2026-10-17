@@ -59,7 +59,7 @@ AO.UI = (function () {
     if (r.kind === 'exp') return `经验 +${r.v}`;
     if (r.kind === 'level') return `🎉 升到 Lv.${r.v}`;
     if (r.kind === 'item') { const d = AO.Quest.itemDef(r.id); return `${d.emoji} 获得 ${d.name}`; }
-    if (r.kind === 'coupon') return `🎟️ 优惠券：${r.coupon.merchant} ${r.coupon.text}`;
+    if (r.kind === 'coupon') return `🎟️ ${r.coupon.merchant} ${r.coupon.text}（在背包里出示）`;
     return '';
   }
   function rewards(title, list) {
@@ -95,10 +95,50 @@ AO.UI = (function () {
       `<h4>已完成 ${done.length}</h4>` + (done.map(q => item(q, '✓', 'done')).join('') || '<p class="muted">还没有</p>');
     el.querySelectorAll('[data-track]').forEach(b => b.onclick = () => { el.classList.add('hidden'); onTrack && onTrack(b.dataset.track); });
   }
+  function couponState(c) { if (c.used) return 'used'; if (Date.now() > c.expires) return 'expired'; return 'ok'; }
+  const fmtDate = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   function openBag() {
     const el = $('#panel-bag'); el.classList.remove('hidden');
     const S = AO.Quest.state(); const ids = Object.keys(S.items);
-    $('#bag-body').innerHTML = ids.length ? ids.map(id => { const d = AO.Quest.itemDef(id); return `<div class="item ${d.coupon ? 'coupon' : ''}"><div class="item-emoji">${d.emoji}</div><div><div class="item-name">${d.name}${S.items[id] > 1 ? ` ×${S.items[id]}` : ''}</div><div class="item-desc">${d.desc || ''}</div></div></div>`; }).join('') : '<p class="muted">背包是空的。去 Main Street 找老张吧。</p>';
+    const coupons = (S.coupons || []).slice().sort((a, b) => (couponState(a) === 'ok' ? 0 : 1) - (couponState(b) === 'ok' ? 0 : 1) || b.issued - a.issued);
+    const cHtml = coupons.map(c => {
+      const d = AO.Coupon.defs()[c.type] || { merchant: '?', text: '' }; const st = couponState(c);
+      const tag = st === 'used' ? '已使用' : st === 'expired' ? '已过期' : `有效期至 ${fmtDate(c.expires)}`;
+      return `<button class="coupon-card ${st}" data-iid="${c.iid}"><div class="cc-left">🎟️</div><div class="cc-main"><div class="cc-merchant">${d.merchant}</div><div class="cc-text">${d.text}</div><div class="cc-tag">${tag}</div></div><div class="cc-go">${st === 'ok' ? '出示 ›' : ''}</div></button>`;
+    }).join('');
+    const iHtml = ids.map(id => { const d = AO.Quest.itemDef(id); return `<div class="item"><div class="item-emoji">${d.emoji}</div><div><div class="item-name">${d.name}${S.items[id] > 1 ? ` ×${S.items[id]}` : ''}</div><div class="item-desc">${d.desc || ''}</div></div></div>`; }).join('');
+    $('#bag-body').innerHTML =
+      `<h4>优惠券 ${coupons.filter(c => couponState(c) === 'ok').length}</h4>` + (cHtml || '<p class="muted">做任务可以拿到真实商家的优惠券。</p>') +
+      `<h4>道具 ${ids.length}</h4>` + (iHtml || '<p class="muted">背包是空的。去 Main Street 找老张吧。</p>');
+    el.querySelectorAll('.coupon-card').forEach(b => b.onclick = () => openCoupon(b.dataset.iid));
+  }
+  function drawQR(canvas, text) {
+    const qr = qrcode(0, 'M'); qr.addData(text); qr.make();
+    const n = qr.getModuleCount(), size = canvas.width, m = 3, cell = size / (n + m * 2), ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size); ctx.fillStyle = '#1b2a3a';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) ctx.fillRect(Math.floor((c + m) * cell), Math.floor((r + m) * cell), Math.ceil(cell), Math.ceil(cell));
+  }
+  let cpTimer = null;
+  async function openCoupon(iid) {
+    const S = AO.Quest.state(); const c = S.coupons.find(x => x.iid === iid); if (!c) return;
+    const d = AO.Coupon.defs()[c.type]; const st = couponState(c);
+    $('#panel-bag').classList.add('hidden');
+    const el = $('#panel-coupon'); el.classList.remove('hidden');
+    $('#cp-merchant').textContent = d.merchant; $('#cp-text').textContent = d.text;
+    $('#cp-terms').textContent = `${d.terms || ''} · 有效期至 ${fmtDate(c.expires)} · 券号 ${c.iid.toUpperCase()}`;
+    $('#cp-wrap').classList.toggle('void', st !== 'ok'); $('#cp-void').textContent = st === 'used' ? '已使用' : st === 'expired' ? '已过期' : '';
+    $('#cp-used').classList.toggle('hidden', st !== 'ok');
+    clearInterval(cpTimer);
+    if (st !== 'ok') { $('#cp-timer').textContent = ''; drawQR($('#cp-canvas'), 'void'); return; }
+    let nextAt = 0;
+    const tick = async () => {
+      if (el.classList.contains('hidden')) { clearInterval(cpTimer); return; }
+      const now = Date.now();
+      if (now >= nextAt) { nextAt = now + AO.Coupon.REFRESH_MS; const token = await AO.Coupon.makeToken(c); el.dataset.token = token; drawQR($('#cp-canvas'), AO.Coupon.merchantUrl(token)); }
+      $('#cp-timer').textContent = `动态码 · ${Math.ceil((nextAt - now) / 1000)} 秒后刷新 · 截图无效`;
+    };
+    await tick(); cpTimer = setInterval(tick, 1000);
+    $('#cp-used').onclick = () => { if (!confirm('确认这张券已经在店里用掉了？')) return; AO.Quest.markCouponUsed(c.iid); clearInterval(cpTimer); el.classList.add('hidden'); toast('已标记为使用'); openBag(); };
   }
   function bind(handlers) {
     $('#dialog').onclick = () => { if (resolver) resolver(); };
@@ -107,5 +147,5 @@ AO.UI = (function () {
     document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => $(b.dataset.close).classList.add('hidden'));
     $('#btn-reset').onclick = () => { if (confirm('清空存档，从头开始？')) { AO.Quest.reset(); location.reload(); } };
   }
-  return { say, choose, close, toast, rewards, fxChips, updateHud, tracker, openQuests, openBag, bind };
+  return { say, choose, close, toast, rewards, fxChips, updateHud, tracker, openQuests, openBag, openCoupon, drawQR, bind };
 })();

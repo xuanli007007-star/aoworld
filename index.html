@@ -59,7 +59,7 @@
   <div class="modal-card">
     <div class="modal-head"><h3>任务</h3><button class="chip" data-close="#panel-quests">关闭</button></div>
     <div id="quests-body" class="panel-body"></div>
-    <button id="btn-reset" class="link small">清空存档重新开始</button>
+    <div class="row-links"><button id="btn-reset" class="link small">清空存档重新开始</button><a class="link small" href="merchant.html">商家核销入口 →</a></div>
   </div>
 </div>
 
@@ -68,6 +68,22 @@
   <div class="modal-card">
     <div class="modal-head"><h3>背包</h3><button class="chip" data-close="#panel-bag">关闭</button></div>
     <div id="bag-body" class="panel-body"></div>
+  </div>
+</div>
+
+<!-- 出示优惠券 -->
+<div id="panel-coupon" class="modal hidden">
+  <div class="modal-card center coupon-panel">
+    <div class="cp-merchant" id="cp-merchant"></div>
+    <div class="cp-text" id="cp-text"></div>
+    <div class="cp-wrap" id="cp-wrap"><canvas id="cp-canvas" width="480" height="480"></canvas><div class="cp-void" id="cp-void"></div></div>
+    <div class="cp-timer" id="cp-timer"></div>
+    <div class="cp-hint">请店员用手机相机扫码核销</div>
+    <div class="cp-terms" id="cp-terms"></div>
+    <div class="row">
+      <button id="cp-used" class="btn btn-ghost">已在店里用掉</button>
+      <button class="btn btn-primary" data-close="#panel-coupon">关闭</button>
+    </div>
   </div>
 </div>
 

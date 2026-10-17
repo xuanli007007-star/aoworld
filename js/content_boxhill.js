@@ -38,10 +38,16 @@ AO.CONTENT = {
     cherries: { name: '半斤车厘子', emoji: '🍒', desc: '刘阿姨分的，按公斤算钱的那种。' },
     licence: { name: 'P 牌驾照', emoji: '🪪', desc: '会 Hook turn 的证明。走路速度提升。' },
   },
+  /* 合作商家（演示）：pin 只是演示用的核销口令 */
+  merchants: [
+    { id: 'dragon', name: 'Dragon Hot Pot', poi: 'Dragon Hot Pot', pin: '1111' },
+    { id: 'gongcha', name: '贡茶 Gong Cha', poi: 'Gong Cha', pin: '2222' },
+    { id: 'grocery', name: 'Box Hill Asian Grocery Centre', poi: 'Asian Grocery Centre', pin: '3333' },
+  ],
   coupons: {
-    hotpot_90: { merchant: 'Dragon Hot Pot', text: '全单九折', note: '线下核销即将开放 · 演示券' },
-    gongcha_b1g1: { merchant: '贡茶', text: '买一送一', note: '线下核销即将开放 · 演示券' },
-    grocery_5: { merchant: 'Box Hill Asian Grocery Centre', text: '满 50 减 5', note: '线下核销即将开放 · 演示券' },
+    hotpot_90: { merchantId: 'dragon', merchant: 'Dragon Hot Pot', text: '全单九折', terms: '堂食可用，每桌限用一张，不与其他优惠同享', validDays: 30 },
+    gongcha_b1g1: { merchantId: 'gongcha', merchant: '贡茶', text: '买一送一', terms: '限中杯，赠送同价或更低价饮品', validDays: 14 },
+    grocery_5: { merchantId: 'grocery', merchant: 'Box Hill Asian Grocery Centre', text: '满 50 减 5', terms: '单笔满 $50 可用，烟酒除外', validDays: 30 },
   },
   quests: [
     /* ---------- 主线 ---------- */

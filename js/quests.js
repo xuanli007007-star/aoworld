@@ -4,9 +4,21 @@ window.AO = window.AO || {};
 AO.Quest = (function () {
   const SAVE = 'ao_save_v1';
   const ATTRS = [['eng', '英语'], ['net', '人脉'], ['mood', '心态'], ['luck', '运气']];
-  const defaults = () => ({ attrs: { eng: 3, net: 1, mood: 5, luck: 3 }, gold: 500, level: 1, exp: 0, items: {}, flags: {}, quests: {}, log: [] });
+  const defaults = () => ({ attrs: { eng: 3, net: 1, mood: 5, luck: 3 }, gold: 500, level: 1, exp: 0, items: {}, flags: {}, quests: {}, log: [], coupons: [] });
   let S = load();
-  function load() { try { const s = JSON.parse(localStorage.getItem(SAVE)); if (s && s.attrs && s.quests) return s; } catch (e) {} return defaults(); }
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SAVE));
+      if (s && s.attrs && s.quests) {
+        s.coupons = s.coupons || [];
+        // 旧存档：背包里的 coupon_xxx 迁移成券实例
+        for (const id of Object.keys(s.items)) if (id.startsWith('coupon_')) { s.pendingCoupons = (s.pendingCoupons || []).concat(Array(s.items[id]).fill(id.slice(7))); delete s.items[id]; }
+        return s;
+      }
+    } catch (e) {}
+    return defaults();
+  }
+  function flushPendingCoupons() { if (!S.pendingCoupons || !AO.Coupon) return; for (const t of S.pendingCoupons) { const c = AO.Coupon.issue(t); if (c) S.coupons.push(c); } delete S.pendingCoupons; save(); }
   function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} }
   function reset() { S = defaults(); save(); }
   const C = () => AO.CONTENT;
@@ -49,7 +61,7 @@ AO.Quest = (function () {
     (fx.removeItems || []).forEach(id => { if (S.items[id]) { S.items[id] -= 1; if (!S.items[id]) delete S.items[id]; } });
     (fx.flags || []).forEach(f => { S.flags[f] = true; });
     (fx.unflags || []).forEach(f => { delete S.flags[f]; });
-    if (fx.coupon) { const id = 'coupon_' + fx.coupon.id; S.items[id] = (S.items[id] || 0) + 1; out.push({ kind: 'coupon', coupon: fx.coupon, id }); }
+    if (fx.coupon) { const c = AO.Coupon.issue(fx.coupon.id); if (c) { S.coupons.push(c); const d = AO.Coupon.defs()[c.type]; out.push({ kind: 'coupon', coupon: { merchant: d.merchant, text: d.text }, iid: c.iid }); } }
     save(); return out;
   }
   function rollChance(roll) { const v = S.attrs[roll.stat] || 0; return Math.max(0.08, Math.min(0.92, 0.3 + v * 0.055 + (roll.mod || 0))); }
@@ -90,7 +102,8 @@ AO.Quest = (function () {
   }
   function talkCount(npcId) { return (S.quests._talks || {})[npcId] || 0; }
   function noteTalk(npcId) { S.quests._talks = S.quests._talks || {}; S.quests._talks[npcId] = (S.quests._talks[npcId] || 0) + 1; save(); }
-  return { ATTRS, state: () => S, save, reset, npc, quest, status, canStart, availableFor, activeQuests, doneQuests, currentStep, activeStepFor, start, advance, applyEffects, rollChance, hasItems, targets, arrive, objectiveText, itemDef, needExp, talkCount, noteTalk,
+  function markCouponUsed(iid) { const c = S.coupons.find(x => x.iid === iid); if (c) { c.used = true; c.usedAt = Date.now(); save(); } }
+  return { ATTRS, state: () => S, flushPendingCoupons, markCouponUsed, save, reset, npc, quest, status, canStart, availableFor, activeQuests, doneQuests, currentStep, activeStepFor, start, advance, applyEffects, rollChance, hasItems, targets, arrive, objectiveText, itemDef, needExp, talkCount, noteTalk,
     allQuests: () => C().quests };
 })();
 
