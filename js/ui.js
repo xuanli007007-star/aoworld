@@ -19,7 +19,7 @@ AO.UI = (function () {
   }
   function showLine(npc, line) {
     return new Promise((res) => {
-      const box = $('#dialog'); box.classList.remove('hidden'); $('#dialog-options').innerHTML = ''; $('#dialog-next').classList.remove('hidden');
+      const box = $('#dialog'); box.classList.remove('hidden'); document.body.classList.add('talking'); $('#dialog-options').innerHTML = ''; $('#dialog-next').classList.remove('hidden');
       const who = line.who || 'npc';
       $('#dialog-portrait').textContent = who === 'me' ? '🙋' : who === 'sys' ? '📍' : portrait(npc);
       $('#dialog-name').textContent = who === 'me' ? '我' : who === 'sys' ? '' : (npc ? npc.name : '');
@@ -48,7 +48,7 @@ AO.UI = (function () {
       resolver = null;
     });
   }
-  function close() { clearInterval(typing); typing = null; resolver = null; $('#dialog').classList.add('hidden'); }
+  function close() { clearInterval(typing); typing = null; resolver = null; $('#dialog').classList.add('hidden'); document.body.classList.remove('talking'); }
   function toast(text, ms = 1800) {
     const el = $('#toast'); el.textContent = text; el.classList.remove('hidden'); el.classList.add('show');
     clearTimeout(toast.t); toast.t = setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.classList.add('hidden'), 300); }, ms);

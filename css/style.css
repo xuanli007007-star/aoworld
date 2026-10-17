@@ -69,3 +69,8 @@ html,body{margin:0;height:100%;background:#e9e2d0;overflow:hidden;font-family:-a
 .toast{position:fixed;top:calc(130px + env(safe-area-inset-top));left:50%;transform:translateX(-50%) translateY(-8px);background:rgba(27,42,58,.92);color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;z-index:25;opacity:0;transition:all .25s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%)}
 /* NPC 头顶标记用的 canvas 文字无需样式 */
+
+/* 对话时隐藏底部提示，避免叠在对话框上 */
+body.talking .hud-bottom{opacity:0;transition:opacity .2s}
+.hud-place{font-size:13px;white-space:nowrap}
+@media (max-width:420px){.chip{padding:6px 10px;font-size:12px}.hud-place{padding:7px 12px}}
