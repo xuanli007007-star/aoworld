@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1b2a3a">
+<title>澳漂世界</title>
+<meta name="description" content="基于真实地图的 2.5D 澳洲华人生活游戏原型">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game"></div>
+
+<!-- HUD：叠在画布上的 HTML -->
+<div id="hud" class="hud hidden">
+  <div class="hud-top">
+    <div class="hud-place"><span id="hud-city">墨尔本</span> · <b id="hud-area">Box Hill</b></div>
+    <div class="hud-right">
+      <button id="btn-center" class="chip">⌖ 回到起点</button>
+      <button id="btn-back" class="chip">← 换城市</button>
+    </div>
+  </div>
+  <div class="hud-bottom">
+    <div class="hint">点地面走路 · 拖动看地图 · 双指或滚轮缩放 · 点商店看名字</div>
+    <div class="attrib">地图数据 © OpenStreetMap contributors</div>
+  </div>
+</div>
+
+<!-- 商家弹窗 -->
+<div id="poi" class="poi hidden">
+  <div class="poi-card">
+    <div class="poi-kind" id="poi-kind"></div>
+    <div class="poi-name" id="poi-name"></div>
+    <div class="poi-sub" id="poi-sub"></div>
+    <div class="poi-quest">📜 任务即将开放 · 商家优惠券即将开放</div>
+    <div class="row">
+      <button id="poi-go" class="btn btn-primary">走过去</button>
+      <button id="poi-close" class="btn btn-ghost">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div id="loading" class="loading">
+  <div class="loading-tram">🚋</div>
+  <div>正在从真实地图搭建 Box Hill…</div>
+</div>
+
+<script src="js/boot.js"></script>
+</body>
+</html>
