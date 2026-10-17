@@ -4,6 +4,8 @@
 
 纯前端，Phaser 3 从 CDN 加载，无需构建。
 
+在线试玩：https://xuanli007007-star.github.io/aoworld/
+
 ## 本地运行
 
 ```bash
