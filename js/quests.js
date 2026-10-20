@@ -107,27 +107,3 @@ AO.Quest = (function () {
     allQuests: () => C().quests };
 })();
 
-/* 把内容里的锚点（poi/building/npc/xy）解析成米坐标，并挪到最近可走的格子 */
-AO.resolveContent = function (D, grid) {
-  const C = AO.CONTENT;
-  const centroid = (poly) => { const n = poly.length; const s = poly.reduce((a, p) => [a[0] + p[0], a[1] + p[1]], [0, 0]); return { x: s[0] / n, y: s[1] / n }; };
-  const findPoi = (re) => D.pois.find(p => re.test(p.name) || (p.zh && re.test(p.zh)));
-  const findBuilding = (re) => D.buildings.find(b => b.name && re.test(b.name));
-  const free = (x, y) => { const c = grid.toCell(x, y); const f = grid.nearestFree(c.cx, c.cy, 60); return f ? grid.toWorld(f.cx, f.cy) : { x, y }; };
-  const resolve = (at) => {
-    if (!at) return null;
-    let p = null;
-    if (at.xy) p = { x: at.xy[0], y: at.xy[1] };
-    else if (at.poi) { const o = findPoi(new RegExp(at.poi, 'i')); if (o) p = { x: o.x, y: o.y }; }
-    else if (at.building) { const b = findBuilding(new RegExp(at.building, 'i')); if (b) p = centroid(b.p); }
-    else if (at.npc) { const n = C.npcs.find(n => n.id === at.npc); if (n && n.x != null) p = { x: n.x, y: n.y }; }
-    if (!p) { console.warn('anchor not found', at); p = { x: 0, y: 0 }; }
-    p = { x: p.x + (at.dx || 0), y: p.y + (at.dy || 0) };
-    return at.exact ? p : free(p.x, p.y);
-  };
-  for (const n of C.npcs) { const p = resolve(n.at); n.x = p.x; n.y = p.y; }
-  for (const q of C.quests) for (const s of q.steps) {
-    if (s.type === 'goto') { const p = resolve(s.at); s.x = p.x; s.y = p.y; }
-    if (s.type === 'collect') for (const pt of s.points) { const p = resolve(pt.at); pt.x = p.x; pt.y = p.y; }
-  }
-};

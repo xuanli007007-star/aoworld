@@ -119,7 +119,7 @@ export function buildWorld(D) {
     const [ix, iz] = cell(x, z); if (!inb(ix, iz)) return null; const i = idx(ix, iz);
     const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]]; let best = null;
     if (BI[i]) {
-      for (const [dx, dz] of dirs) for (let s = 1; s <= 45; s++) {
+      for (const [dx, dz] of dirs) for (let s = 1; s <= 90; s++) {
         const jx = ix + dx * s, jz = iz + dz * s; if (!inb(jx, jz)) break; const j = idx(jx, jz);
         if (!BI[j]) { const score = s + (GOOD.has(G[j]) ? 0 : 20); if (!best || score < best.score) best = { score, gx: jx, gz: jz, bx: jx - dx, bz: jz - dz, dx, dz }; break; }
       }

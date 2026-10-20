@@ -4,16 +4,21 @@ import { makeAtlas, tileMaterial } from './atlas.js';
 import { buildWorld, buildMeshes, treeGeometries } from './world.js';
 import { makeCharacter, buildShopSigns, buildSponsor, makeChest, Particles, makeClouds, makeCars, makePeds, canvasTex } from './props.js';
 import { Player, Input } from './player.js';
+import { setupQuests } from './npc.js';
+import { makeMinimap } from './minimap.js';
 
 const $ = (s) => document.querySelector(s);
 const setLoad = (t) => { $('#load-text').textContent = t; };
 const nextFrame = () => new Promise(r => setTimeout(r, 0));
 const MOBILE = matchMedia('(pointer: coarse)').matches;
 
+/* ---------- 设置 ---------- */
+const SET = (() => { try { return Object.assign({ sound: true, shadow: true, life: true }, JSON.parse(localStorage.getItem('ao3d_settings')) || {}); } catch (e) { return { sound: true, shadow: true, life: true }; } })();
+const saveSet = () => { try { localStorage.setItem('ao3d_settings', JSON.stringify(SET)); } catch (e) {} };
 /* ---------- 声音（合成，不用素材） ---------- */
 const Sfx = (() => {
   let ctx = null; const ac = () => ctx || (ctx = new (window.AudioContext || window.webkitAudioContext)());
-  const tone = (f, t0, d, type = 'square', vol = 0.06) => { const c = ac(), o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, c.currentTime + t0); g.gain.setValueAtTime(vol, c.currentTime + t0); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + t0 + d); o.connect(g).connect(c.destination); o.start(c.currentTime + t0); o.stop(c.currentTime + t0 + d + 0.02); };
+  const tone = (f, t0, d, type = 'square', vol = 0.06) => { if (!SET.sound) return; const c = ac(), o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, c.currentTime + t0); g.gain.setValueAtTime(vol, c.currentTime + t0); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + t0 + d); o.connect(g).connect(c.destination); o.start(c.currentTime + t0); o.stop(c.currentTime + t0 + d + 0.02); };
   return {
     unlock() { try { ac().resume(); } catch (e) {} },
     coin() { try { tone(988, 0, 0.08); tone(1319, 0.07, 0.18); } catch (e) {} },
@@ -42,7 +47,7 @@ const world = buildWorld(D);
 const renderer = new THREE.WebGLRenderer({ antialias: !MOBILE, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, MOBILE ? 1.5 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = SET.shadow; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 $('#game').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
@@ -108,6 +113,9 @@ scene.add(char.root);
 const player = new Player(world, char, camera);
 player.place(SPAWN.x, SPAWN.z);
 const input = new Input(renderer.domElement);
+const quests = setupQuests({ world, scene, player, D, onChange: () => hud() });
+const minimap = makeMinimap(world, $('#minimap'));
+AO.UI.bind({ track: (id) => { quests.track(id); compass(); } });
 
 /* ---------- 装扮 ---------- */
 const HOODIES = [['green', '电车绿', 0x1f7a5a, 0], ['red', '火锅红', 0xd8432f, 60], ['blue', '海港蓝', 0x2b6cb0, 60], ['yellow', '袋鼠黄', 0xf2c230, 80], ['purple', '奶茶紫', 0x8e44ad, 100], ['black', '墨尔本黑', 0x222222, 150]];
@@ -132,8 +140,13 @@ function hud() {
   const opened = chests.filter(c => c.opened).length;
   $('#h-gold').textContent = S().gold; $('#h-chest').textContent = `${opened}/${chests.length}`; $('#h-stamp').textContent = `${day.stamps.length}/${sponsors.length}`;
   const cs = (S().coupons || []).filter(c => !c.used && Date.now() < c.expires).length; $('#h-bag-badge').textContent = cs; $('#h-bag-badge').classList.toggle('hidden', !cs);
+  const qn = AO.Quest.activeQuests().length + AO.Quest.allQuests().filter(q => AO.Quest.canStart(q)).length; $('#quest-badge').textContent = qn; $('#quest-badge').classList.toggle('hidden', !qn);
+  $('#h-level').textContent = 'Lv.' + S().level; $('#h-exp').style.width = Math.round(100 * S().exp / AO.Quest.needExp(S().level)) + '%';
 }
 function compass() {
+  const g = quests ? quests.guide() : null; const qe = $('#qtrack');
+  if (g) { qe.classList.remove('hidden'); $('#q-text').textContent = g.x != null ? `${g.text} · ${Math.round(Math.hypot(g.x - player.p.x, g.z - player.p.z))} 米` : g.text; $('#q-arrow').style.visibility = g.x != null ? 'visible' : 'hidden'; if (g.x != null) $('#q-arrow').style.transform = `rotate(${player.bearingTo(g.x, g.z)}rad)`; }
+  else qe.classList.add('hidden');
   let tgt = navTarget, label = '';
   if (tgt) label = tgt.label;
   else { let best = null; for (const c of chests) if (!c.opened) { const d = Math.hypot(c.x - player.p.x, c.z - player.p.z); if (!best || d < best.d) best = { d, c }; } if (best) { tgt = { x: best.c.x, z: best.c.z }; label = best.c.sp ? `${best.c.sp.logo} 宝箱` : '金币宝箱'; } }
@@ -209,13 +222,30 @@ $('#tip').onclick = () => $('#tip').classList.add('hidden');
 for (const el of ['#title', '#hud', '#ad', '#tip', '#panel-shop', '#panel-bag', '#panel-coupon', '#btn-act']) for (const ev of ['touchstart', 'touchmove']) $(el).addEventListener(ev, (e) => e.stopPropagation(), { passive: true });
 $('#t-date').textContent = `今日宝箱 ${chests.length} 个 · ${chests.filter(c => c.opened).length} 个已开`;
 $('#btn-act').onclick = () => { const c = nearestChest(); if (c) openChest(c); };
-window.addEventListener('keydown', (e) => { if (e.code === 'KeyE' && mode === 'play') { const c = nearestChest(); if (c) openChest(c); } });
-$('#h-bag').onclick = () => AO.UI.openBag();
+window.addEventListener('keydown', (e) => { if (e.code === 'KeyE' && mode === 'play' && input.enabled) { const c = nearestChest(); if (c) openChest(c); else { const o = quests.nearestNpc(); if (o) quests.talk(o); } } });
 $('#h-shop').onclick = openShop;
+$('#h-set').onclick = () => { $('#set-sound').checked = SET.sound; $('#set-shadow').checked = SET.shadow; $('#set-life').checked = SET.life; $('#panel-settings').classList.remove('hidden'); };
+$('#set-sound').onchange = (e) => { SET.sound = e.target.checked; saveSet(); };
+$('#set-shadow').onchange = (e) => { SET.shadow = e.target.checked; saveSet(); renderer.shadowMap.enabled = SET.shadow; scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => { m.needsUpdate = true; }); }); };
+$('#set-life').onchange = (e) => { SET.life = e.target.checked; saveSet(); applyLife(); };
+$('#set-help').onclick = () => { $('#panel-settings').classList.add('hidden'); $('#tip').classList.remove('hidden'); };
+$('#set-reset').onclick = () => { if (!confirm('清空所有存档（金币、任务、装扮、优惠券），从头开始？')) return; AO.Quest.reset(); Object.keys(localStorage).filter(k => k.startsWith('ao3d_')).forEach(k => localStorage.removeItem(k)); location.reload(); };
+function applyLife() { for (const c of cars.list || []) c.g.visible = SET.life; for (const p of peds.list) p.ch.root.visible = SET.life; }
+applyLife();
+$('#btn-talk').onclick = () => { const o = quests.nearestNpc(); if (o) quests.talk(o); };
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => $(b.dataset.close).classList.add('hidden'));
 AO.Quest.flushPendingCoupons();
 hud();
 
+/* ---------- 小地图 ---------- */
+function drawMap() {
+  const marks = [];
+  for (const c of chests) if (!c.opened) marks.push({ x: c.x, z: c.z, color: '#ffd23f', r: 4 });
+  for (const sp of sponsors) marks.push({ x: sp.b.x, z: sp.b.z, color: sp.color, r: 6 });
+  for (const o of quests.npcs) if (o.mark.visible) marks.push({ x: o.n.x, z: o.n.y, color: o.mark.material.map === quests.npcs[0].mark.material.map && AO.Quest.activeStepFor(o.n.id) ? '#7ec8ff' : (AO.Quest.activeStepFor(o.n.id) ? '#7ec8ff' : '#ff9f1c'), r: 5, label: AO.Quest.activeStepFor(o.n.id) ? '?' : '!' });
+  const g = quests.guide(); if (g && g.x != null && !g.talk) marks.push({ x: g.x, z: g.z, color: '#ffb02e', r: 6, label: '★' });
+  minimap.draw(player, marks);
+}
 /* ---------- 主循环 ---------- */
 const clock = new THREE.Clock(); let hudT = 0; let fpsN = 0, fpsT = 0;
 window.addEventListener('resize', () => { renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); });
@@ -225,11 +255,16 @@ function frame() {
     orbit += dt * 0.06; const R = 120; camera.position.set(SPAWN.x + Math.sin(orbit) * R, 85, SPAWN.z + Math.cos(orbit) * R); camera.lookAt(SPAWN.x, 0, SPAWN.z + 30);
     char.animate(dt, 0);
   } else {
-    input.enabled = $('#ad').classList.contains('hidden');
-    if (input.enabled) player.update(dt, input, { onJump: () => Sfx.jump() });
-    const near = nearestChest(); $('#btn-act').classList.toggle('hidden', !near);
-    checkStamps();
-    hudT += dt; if (hudT > 0.1) { hudT = 0; compass(); }
+    const blocking = ['#ad', '#dialog', '#reward', '#panel-shop', '#panel-bag', '#panel-coupon', '#panel-quests', '#panel-settings', '#tip'].some(id => !$(id).classList.contains('hidden'));
+    input.enabled = !blocking && !quests.busy;
+    if (input.enabled) player.update(dt, input, { onJump: () => Sfx.jump(), speedBoost: S().flags.car ? 1.5 : 1 });
+    else { input.move.x = input.move.y = 0; player.speed = 0; char.animate(dt, 0); player.updateCamera(dt); }
+    const near = input.enabled && nearestChest(); $('#btn-act').classList.toggle('hidden', !near);
+    const npc = input.enabled && !near && quests.nearestNpc();
+    $('#btn-talk').classList.toggle('hidden', !npc); if (npc) $('#btn-talk').textContent = `💬 和${npc.n.name}说话`;
+    if (input.enabled) checkStamps();
+    quests.update(dt, t, input.enabled);
+    hudT += dt; if (hudT > 0.1) { hudT = 0; compass(); drawMap(); }
   }
   const focus = mode === 'title' ? new THREE.Vector3(SPAWN.x, 0, SPAWN.z) : player.p;
   sun.position.set(focus.x + SUN_DIR.x * 120, SUN_DIR.y * 120, focus.z + SUN_DIR.z * 120); sun.target.position.set(focus.x, 0, focus.z);
@@ -245,4 +280,4 @@ function frame() {
 }
 if (/loop=timeout/.test(location.search)) setInterval(frame, 16); else renderer.setAnimationLoop(frame);
 $('#loading').classList.add('hidden');
-window.G = { world, player, chests, sponsors, openChest, scene, camera, renderer, signs, day, input, setMode: (m) => { if (m === 'play') $('#btn-start').click(); } };
+window.G = { quests, world, player, chests, sponsors, openChest, scene, camera, renderer, signs, day, input, setMode: (m) => { if (m === 'play') $('#btn-start').click(); } };

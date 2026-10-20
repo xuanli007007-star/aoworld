@@ -145,7 +145,7 @@ AO.UI = (function () {
     $('#btn-quests').onclick = () => openQuests(handlers.track);
     $('#btn-bag').onclick = openBag;
     document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => $(b.dataset.close).classList.add('hidden'));
-    $('#btn-reset').onclick = () => { if (confirm('清空存档，从头开始？')) { AO.Quest.reset(); location.reload(); } };
+
   }
   return { say, choose, close, toast, rewards, fxChips, updateHud, tracker, openQuests, openBag, openCoupon, drawQR, bind };
 })();
