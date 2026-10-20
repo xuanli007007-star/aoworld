@@ -40,14 +40,14 @@ AO.CONTENT = {
   },
   /* 合作商家（演示）：pin 只是演示用的核销口令 */
   merchants: [
-    { id: 'dragon', name: 'Dragon Hot Pot', poi: 'Dragon Hot Pot', pin: '1111' },
-    { id: 'gongcha', name: '贡茶 Gong Cha', poi: 'Gong Cha', pin: '2222' },
-    { id: 'grocery', name: 'Box Hill Asian Grocery Centre', poi: 'Asian Grocery Centre', pin: '3333' },
+    { id: 'dragon', name: 'Dragon Hot Pot', poi: 'Dragon Hot Pot', pin: '1111', logo: '🍲', color: '#d8432f', offer: '全单九折', slogan: '川味火锅 · 毛肚每日新鲜', coupon: 'hotpot_90' },
+    { id: 'gongcha', name: '贡茶 Gong Cha', poi: 'Gong Cha', pin: '2222', logo: '🧋', color: '#8e44ad', offer: '买一送一', slogan: '台湾茶饮 · 三分糖少冰', coupon: 'gongcha_b1g1' },
+    { id: 'grocery', name: 'Asian Grocery', poi: 'Asian Grocery Centre', pin: '3333', logo: '🛒', color: '#1f8a5a', offer: '满 50 减 5', slogan: '亚洲食品 · 一站购齐', coupon: 'grocery_5' },
   ],
   coupons: {
-    hotpot_90: { merchantId: 'dragon', merchant: 'Dragon Hot Pot', text: '全单九折', terms: '堂食可用，每桌限用一张，不与其他优惠同享', validDays: 30 },
-    gongcha_b1g1: { merchantId: 'gongcha', merchant: '贡茶', text: '买一送一', terms: '限中杯，赠送同价或更低价饮品', validDays: 14 },
-    grocery_5: { merchantId: 'grocery', merchant: 'Box Hill Asian Grocery Centre', text: '满 50 减 5', terms: '单笔满 $50 可用，烟酒除外', validDays: 30 },
+    hotpot_90: { merchantId: 'dragon', merchant: 'Dragon Hot Pot', text: '全单九折', terms: '演示券，商家未参与，店内不可用', validDays: 30 },
+    gongcha_b1g1: { merchantId: 'gongcha', merchant: '贡茶', text: '买一送一', terms: '演示券，商家未参与，店内不可用', validDays: 14 },
+    grocery_5: { merchantId: 'grocery', merchant: 'Box Hill Asian Grocery Centre', text: '满 50 减 5', terms: '演示券，商家未参与，店内不可用', validDays: 30 },
   },
   quests: [
     /* ---------- 主线 ---------- */

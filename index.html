@@ -3,75 +3,94 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#1b2a3a">
+<meta name="theme-color" content="#4f9be0">
 <title>澳漂世界</title>
-<meta name="description" content="基于真实地图的 2.5D 澳洲华人生活游戏原型">
+<meta name="description" content="在方块化的真实 Box Hill 街头找宝箱，领商家优惠">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/game3d.css">
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
 </head>
-<body>
+<body class="g3d">
 <div id="game"></div>
 
-<!-- HUD：叠在画布上的 HTML -->
-<div id="hud" class="hud hidden">
-  <div class="hud-top">
-    <div class="hud-place"><span id="hud-city">墨尔本</span> · <b id="hud-area">Box Hill</b></div>
-    <div class="hud-right">
-      <button id="btn-quests" class="chip">📜 任务 <span id="quest-badge" class="badge hidden">0</span></button>
-      <button id="btn-bag" class="chip">🎒 背包</button>
-      <button id="btn-back" class="chip">← 换城市</button>
+<div id="loading" class="g-loading">
+  <div class="g-block-spin"></div>
+  <div class="g-logo">澳漂世界</div>
+  <div id="load-text">加载中…</div>
+</div>
+
+<!-- 标题页 -->
+<div id="title" class="g-title">
+  <div class="g-title-card">
+    <div class="g-logo big">澳漂世界</div>
+    <div class="g-sub">真实的 Box Hill · 方块版</div>
+    <ul class="g-pitch">
+      <li>📦 每天街头刷新宝箱，开箱拿金币</li>
+      <li>🎟️ 集齐商家宝箱，领真实优惠券</li>
+      <li>👕 金币换卫衣和帽子</li>
+    </ul>
+    <button id="btn-start" class="g-btn">开始探索</button>
+    <div id="t-date" class="g-small"></div>
+    <div class="g-cities"><span class="on">墨尔本 · Box Hill</span><span>悉尼 · 即将开放</span><span>布里斯班 · 即将开放</span></div>
+    <div class="g-links"><a href="classic.html">2.5D 任务版</a> · <a href="merchant.html">商家核销入口</a></div>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="g-hud hidden">
+  <div class="g-top">
+    <div class="g-stats">
+      <span>💰 <b id="h-gold">0</b></span>
+      <span>📦 <b id="h-chest">0/0</b></span>
+      <span>📍 <b id="h-stamp">0/0</b></span>
+    </div>
+    <div class="g-btns">
+      <button id="h-shop" class="g-chip">👕</button>
+      <button id="h-bag" class="g-chip">🎒<span id="h-bag-badge" class="badge hidden">0</span></button>
     </div>
   </div>
-  <div class="hud-mid">
-    <div id="hud-stats" class="stats"></div>
-    <div id="tracker" class="tracker hidden"></div>
-  </div>
-  <div class="hud-bottom">
-    <div class="hint">点地面走路 · 点 NPC 对话 · 拖动看地图 · 双指缩放</div>
-    <div class="attrib">地图数据 © OpenStreetMap contributors</div>
+  <div id="compass" class="g-compass hidden"><div id="c-arrow" class="g-arrow">▲</div><div id="c-text"></div></div>
+  <div class="g-attrib">地图数据 © OpenStreetMap contributors</div>
+</div>
+<div id="stick" class="g-stick"><div id="stick-knob" class="g-knob"></div></div>
+<button id="btn-jump" class="g-jump">⤒</button>
+<button id="btn-act" class="g-act hidden">📦 打开宝箱</button>
+
+<div id="tip" class="g-tip hidden">
+  <div class="g-tip-card">
+    <h3>怎么玩</h3>
+    <p>👈 左半屏拖动走路<br>👉 右半屏拖动转视角，双指缩放<br>⤒ 跳上台阶和矮屋顶<br>跟着顶部箭头找发光的宝箱<br>走进彩色光柱给商家打卡</p>
+    <p class="muted small">电脑：WASD 走路，空格跳，E 开箱，鼠标拖动转视角</p>
+    <button class="g-btn">知道了</button>
   </div>
 </div>
 
-<!-- 对话面板 -->
-<div id="dialog" class="dialog hidden">
-  <div class="dialog-card">
-    <div class="dialog-portrait" id="dialog-portrait">🧑</div>
-    <div class="dialog-main">
-      <div class="dialog-head"><b id="dialog-name"></b> <span id="dialog-role" class="muted"></span></div>
-      <div class="dialog-text" id="dialog-text"></div>
-      <div class="dialog-options" id="dialog-options"></div>
-      <div class="dialog-next" id="dialog-next">点击继续 ▸</div>
-    </div>
+<!-- 广告卡 -->
+<div id="ad" class="g-ad hidden">
+  <div class="g-ad-card">
+    <div class="g-ad-head"><div id="ad-logo" class="g-ad-logo"></div><div><div id="ad-name" class="g-ad-name"></div><div id="ad-slogan" class="g-ad-slogan"></div></div><span id="ad-tag" class="g-ad-tag">演示广告</span></div>
+    <div id="ad-offer" class="g-ad-offer"></div>
+    <div id="ad-rewards" class="g-ad-rewards"></div>
+    <div id="ad-progress" class="g-ad-progress"></div>
+    <div class="g-row"><button id="ad-go" class="g-btn ghost">带我去这家店</button><button id="ad-ok" class="g-btn">收下</button></div>
   </div>
 </div>
 
-<!-- 奖励 -->
-<div id="reward" class="modal hidden">
-  <div class="modal-card center">
-    <div class="reward-emoji">🎉</div>
-    <h3 id="reward-title">任务完成</h3>
-    <ul id="reward-list" class="reward-list"></ul>
-    <button id="reward-ok" class="btn btn-primary">收下</button>
-  </div>
-</div>
-
-<!-- 任务面板 -->
-<div id="panel-quests" class="modal hidden">
+<!-- 装扮 -->
+<div id="panel-shop" class="modal hidden">
   <div class="modal-card">
-    <div class="modal-head"><h3>任务</h3><button class="chip" data-close="#panel-quests">关闭</button></div>
-    <div id="quests-body" class="panel-body"></div>
-    <div class="row-links"><button id="btn-reset" class="link small">清空存档重新开始</button><a class="link small" href="merchant.html">商家核销入口 →</a></div>
+    <div class="modal-head"><h3>装扮</h3><button class="chip" data-close="#panel-shop">关闭</button></div>
+    <div id="shop-body" class="panel-body"></div>
   </div>
 </div>
 
-<!-- 背包 -->
+<!-- 背包与出示优惠券（复用 2.5D 版的界面） -->
 <div id="panel-bag" class="modal hidden">
   <div class="modal-card">
     <div class="modal-head"><h3>背包</h3><button class="chip" data-close="#panel-bag">关闭</button></div>
     <div id="bag-body" class="panel-body"></div>
   </div>
 </div>
-
-<!-- 出示优惠券 -->
 <div id="panel-coupon" class="modal hidden">
   <div class="modal-card center coupon-panel">
     <div class="cp-merchant" id="cp-merchant"></div>
@@ -86,28 +105,16 @@
     </div>
   </div>
 </div>
-
 <div id="toast" class="toast hidden"></div>
 
-<!-- 商家弹窗 -->
-<div id="poi" class="poi hidden">
-  <div class="poi-card">
-    <div class="poi-kind" id="poi-kind"></div>
-    <div class="poi-name" id="poi-name"></div>
-    <div class="poi-sub" id="poi-sub"></div>
-    <div class="poi-quest">📜 任务即将开放 · 商家优惠券即将开放</div>
-    <div class="row">
-      <button id="poi-go" class="btn btn-primary">走过去</button>
-      <button id="poi-close" class="btn btn-ghost">关闭</button>
-    </div>
-  </div>
-</div>
-
-<div id="loading" class="loading">
-  <div class="loading-tram">🚋</div>
-  <div>正在从真实地图搭建 Box Hill…</div>
-</div>
-
-<script src="js/boot.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="js/content_boxhill.js"></script>
+<script src="js/coupon.js"></script>
+<script src="js/quests.js"></script>
+<script src="js/ui.js"></script>
+<script type="module" src="js3d/main.js"></script>
+<script>
+  window.addEventListener('error', (e) => { const t = document.getElementById('load-text'); if (t && !document.getElementById('loading').classList.contains('hidden')) t.textContent = '加载出错：' + (e.message || '') + '，请刷新'; });
+</script>
 </body>
 </html>
