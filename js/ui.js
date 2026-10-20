@@ -54,6 +54,8 @@ AO.UI = (function () {
     clearTimeout(toast.t); toast.t = setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.classList.add('hidden'), 300); }, ms);
   }
   function rewardText(r) {
+    if (r.kind === 'raw') return r.text;
+    if (r.kind === 'card') return `📇 ${r.card.name}${r.first ? ' · 新卡' : ''}`;
     if (r.kind === 'attr') return `${r.name} ${r.v > 0 ? '+' : ''}${r.v}`;
     if (r.kind === 'gold') return `💰 ${r.v > 0 ? '+' : ''}${r.v}`;
     if (r.kind === 'exp') return `经验 +${r.v}`;

@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#4f9be0">
 <title>澳漂世界</title>
 <meta name="description" content="在方块化的真实 Box Hill 街头找宝箱，领商家优惠">
-<link rel="stylesheet" href="css/style.css">
-<link rel="stylesheet" href="css/game3d.css">
+<link rel="stylesheet" href="css/style.css?v=202610201424">
+<link rel="stylesheet" href="css/game3d.css?v=202610201424">
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
 </head>
 <body class="g3d">
@@ -26,6 +26,8 @@
     <div class="g-sub">真实的 Box Hill · 方块版</div>
     <ul class="g-pitch">
       <li>🧑‍🤝‍🧑 街坊有事找你，做任务升级</li>
+      <li>📇 走遍 Box Hill，收集真实餐厅美食卡</li>
+      <li>🏪 在 Main Street 开一家自己的小店</li>
       <li>📦 每天街头刷新宝箱，开箱拿金币</li>
       <li>🎟️ 集齐商家宝箱，领真实优惠券</li>
       <li>👕 金币换卫衣和帽子</li>
@@ -47,6 +49,8 @@
     </div>
     <div class="g-btns">
       <button id="btn-quests" class="g-chip">📜<span id="quest-badge" class="badge hidden">0</span></button>
+      <button id="h-album" class="g-chip">📇</button>
+      <button id="h-myshop" class="g-chip">🏪</button>
       <button id="h-shop" class="g-chip">👕</button>
       <button id="btn-bag" class="g-chip">🎒<span id="h-bag-badge" class="badge hidden">0</span></button>
       <button id="h-set" class="g-chip">⚙️</button>
@@ -58,12 +62,14 @@
   </div>
   <canvas id="minimap" class="g-minimap" width="240" height="240"></canvas>
   <div class="g-level"><b id="h-level">Lv.1</b><span class="bar"><i id="h-exp"></i></span></div>
+  <div id="dm" class="g-dm"><div class="dm-top"><b id="dm-head">每日任务</b><span id="dm-streak"></span></div><div id="dm-list"></div></div>
   <div class="g-attrib">地图数据 © OpenStreetMap contributors</div>
 </div>
 <div id="stick" class="g-stick"><div id="stick-knob" class="g-knob"></div></div>
 <button id="btn-jump" class="g-jump">⤒</button>
 <button id="btn-act" class="g-act hidden">📦 打开宝箱</button>
 <button id="btn-talk" class="g-act talk hidden">💬 说话</button>
+<button id="btn-collect" class="g-act gold hidden">💰 收钱</button>
 
 <div id="tip" class="g-tip hidden">
   <div class="g-tip-card">
@@ -118,6 +124,15 @@
 </div>
 
 
+
+<!-- 签到与每日任务 -->
+<div id="panel-daily" class="modal hidden"><div class="modal-card"><div class="modal-head"><h3>📅 签到 · 每日任务</h3><button class="chip" data-close="#panel-daily">关闭</button></div><div id="daily-body" class="panel-body"></div></div></div>
+<!-- 美食图鉴 -->
+<div id="panel-album" class="modal hidden"><div class="modal-card tall"><div class="modal-head"><h3>📇 Box Hill 美食图鉴</h3><button class="chip" data-close="#panel-album">关闭</button></div><div id="album-body" class="panel-body"></div></div></div>
+<div id="panel-card" class="modal hidden"><div class="modal-card"><div class="modal-head"><h3>美食卡</h3><button class="chip" data-close="#panel-card">关闭</button></div><div id="card-body" class="panel-body"></div></div></div>
+<!-- 自己的小店 -->
+<div id="panel-myshop" class="modal hidden"><div class="modal-card"><div class="modal-head"><h3>🏪 我的小店</h3><button class="chip" data-close="#panel-myshop">关闭</button></div><div id="myshop-body" class="panel-body"></div></div></div>
+
 <!-- 设置 -->
 <div id="panel-settings" class="modal hidden">
   <div class="modal-card">
@@ -166,11 +181,11 @@
 <div id="toast" class="toast hidden"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-<script src="js/content_boxhill.js"></script>
-<script src="js/coupon.js"></script>
-<script src="js/quests.js"></script>
-<script src="js/ui.js"></script>
-<script type="module" src="js3d/main.js"></script>
+<script src="js/content_boxhill.js?v=202610201424"></script>
+<script src="js/coupon.js?v=202610201424"></script>
+<script src="js/quests.js?v=202610201424"></script>
+<script src="js/ui.js?v=202610201424"></script>
+<script type="module" src="js3d/main.js?v=202610201424"></script>
 <script>
   window.addEventListener('error', (e) => { const t = document.getElementById('load-text'); if (t && !document.getElementById('loading').classList.contains('hidden')) t.textContent = '加载出错：' + (e.message || '') + '，请刷新'; });
 </script>

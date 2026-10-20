@@ -17,7 +17,7 @@ function markTex(ch, color) {
   });
 }
 
-export function setupQuests({ world, scene, player, D, onChange, onTalkStart, onTalkEnd }) {
+export function setupQuests({ world, scene, player, D, onChange, onTalkStart, onTalkEnd, onTalk, onQuestDone }) {
   const C = AO.CONTENT;
   /* 锚点 → 坐标，并挪到最近可以站人的地面 */
   const centroid = (poly) => { const n = poly.length; const s = poly.reduce((a, p) => [a[0] + p[0], a[1] + p[1]], [0, 0]); return { x: s[0] / n, y: s[1] / n }; };
@@ -82,6 +82,7 @@ export function setupQuests({ world, scene, player, D, onChange, onTalkStart, on
 
   async function talk(o) {
     if (busy) return; busy = true; onTalkStart && onTalkStart();
+    onTalk && onTalk(o.n);
     const n = o.n; o.ch.root.rotation.y = Math.atan2(player.p.x - n.x, player.p.z - n.y);
     try {
       const act = AO.Quest.activeStepFor(n.id);
@@ -119,7 +120,7 @@ export function setupQuests({ world, scene, player, D, onChange, onTalkStart, on
   }
   async function finish(n, q) {
     const r = AO.Quest.advance(q.id);
-    if (r.done) { if (q.done) await AO.UI.say(n || AO.Quest.npc(q.giver), q.done); AO.UI.close(); await AO.UI.rewards('任务完成：' + q.title, r.rewards); }
+    if (r.done) { onQuestDone && onQuestDone(q); if (q.done) await AO.UI.say(n || AO.Quest.npc(q.giver), q.done); AO.UI.close(); await AO.UI.rewards('任务完成：' + q.title, r.rewards); }
     else { const next = AO.Quest.currentStep(q); if (n && next && (next.type === 'talk' || next.type === 'choice') && next.npc === n.id) await runStep(n, q, next); }
     refreshMarks();
   }

@@ -6,6 +6,7 @@ import { makeCharacter, buildShopSigns, buildSponsor, makeChest, Particles, make
 import { Player, Input } from './player.js';
 import { setupQuests } from './npc.js';
 import { makeMinimap } from './minimap.js';
+import { setupMeta } from './meta.js';
 
 const $ = (s) => document.querySelector(s);
 const setLoad = (t) => { $('#load-text').textContent = t; };
@@ -113,7 +114,9 @@ scene.add(char.root);
 const player = new Player(world, char, camera);
 player.place(SPAWN.x, SPAWN.z);
 const input = new Input(renderer.domElement);
-const quests = setupQuests({ world, scene, player, D, onChange: () => hud() });
+let meta = null;
+const quests = setupQuests({ world, scene, player, D, onChange: () => hud(), onTalk: () => meta && meta.event('talk'), onQuestDone: () => meta && meta.event('quest') });
+meta = setupMeta({ world, scene, D, player, sponsors, spawn: SPAWN, sfx: Sfx, particles, onNav: (t) => { navTarget = t; compass(); }, onChange: () => hud() });
 const minimap = makeMinimap(world, $('#minimap'));
 AO.UI.bind({ track: (id) => { quests.track(id); compass(); } });
 
@@ -141,6 +144,7 @@ function hud() {
   $('#h-gold').textContent = S().gold; $('#h-chest').textContent = `${opened}/${chests.length}`; $('#h-stamp').textContent = `${day.stamps.length}/${sponsors.length}`;
   const cs = (S().coupons || []).filter(c => !c.used && Date.now() < c.expires).length; $('#h-bag-badge').textContent = cs; $('#h-bag-badge').classList.toggle('hidden', !cs);
   const qn = AO.Quest.activeQuests().length + AO.Quest.allQuests().filter(q => AO.Quest.canStart(q)).length; $('#quest-badge').textContent = qn; $('#quest-badge').classList.toggle('hidden', !qn);
+  if (meta) { const st = meta.streakState(); $('#dm-streak').textContent = st.claimed ? `🔥${st.count}天` : '📅 待签到'; }
   $('#h-level').textContent = 'Lv.' + S().level; $('#h-exp').style.width = Math.round(100 * S().exp / AO.Quest.needExp(S().level)) + '%';
 }
 function compass() {
@@ -175,13 +179,14 @@ async function openChest(c) {
     progress = got >= tot ? '🎉 集齐本店宝箱，优惠券已放进背包' : `本店宝箱 ${got}/${tot} · 集齐送优惠券`;
     if (got >= tot) rewards.push(...AO.Quest.applyEffects({ coupon: { id: c.sp.coupon } }));
   }
+  rewards.push(...meta.drawCards(c.sp ? 1 : 2)); meta.event('chest');
   if (chests.every(x => x.opened) && !day.bonus) { day.bonus = true; saveDay(); rewards.push(...AO.Quest.applyEffects({ gold: 100 })); progress += (progress ? '<br>' : '') + '🏆 今天的宝箱全开完了，额外 +100'; }
   hud();
   await new Promise(res => setTimeout(res, 650));
   showAd(c.sp, rewards, progress);
   busy = false;
 }
-function rewardLine(r) { if (r.kind === 'gold') return `💰 +${r.v}`; if (r.kind === 'coupon') return `🎟️ ${r.coupon.merchant} ${r.coupon.text}`; return ''; }
+function rewardLine(r) { return meta.rewardText(r); }
 function showAd(sp, rewards, progress) {
   const el = $('#ad'); el.classList.remove('hidden'); el.style.setProperty('--sp', sp ? sp.color : '#c9962a');
   $('#ad-logo').textContent = sp ? sp.logo : '💰';
@@ -206,7 +211,7 @@ function checkStamps() {
     if (Math.hypot(sp.b.x - player.p.x, sp.b.z - player.p.z) < 3.2) {
       day.stamps.push(sp.id); saveDay(); stat(sp.id, 'visits'); stat(sp.id, 'impressions');
       AO.Quest.applyEffects({ gold: 10 }); Sfx.stamp(); particles.burst(sp.b.x, 1.2, sp.b.z, 40, [new THREE.Color(sp.color).getHex(), 0xffffff], 5);
-      AO.UI.toast(`${sp.logo} 在 ${sp.name} 打卡成功 · 💰 +10`); hud();
+      AO.UI.toast(`${sp.logo} 在 ${sp.name} 打卡成功 · 💰 +10`); meta.event('stamp'); hud();
     }
   }
 }
@@ -216,14 +221,19 @@ let mode = 'title'; let orbit = 0;
 $('#btn-start').onclick = () => {
   Sfx.unlock(); mode = 'play'; $('#title').classList.add('hidden'); $('#hud').classList.remove('hidden'); document.body.classList.add('playing');
   player.yaw = SPAWN.yaw; player.pitch = 0.32; player.dist = 10; player.updateCamera(0, true);
-  try { if (!localStorage.getItem('ao3d_tip')) { $('#tip').classList.remove('hidden'); localStorage.setItem('ao3d_tip', '1'); } } catch (e) {}
+  let firstTime = false; try { if (!localStorage.getItem('ao3d_tip')) { firstTime = true; $('#tip').classList.remove('hidden'); localStorage.setItem('ao3d_tip', '1'); } } catch (e) {}
+  if (!firstTime && !meta.streakState().claimed) setTimeout(() => meta.openDaily(), 600);
 };
-$('#tip').onclick = () => $('#tip').classList.add('hidden');
+$('#tip').onclick = () => { $('#tip').classList.add('hidden'); if (!meta.streakState().claimed) setTimeout(() => meta.openDaily(), 300); };
 for (const el of ['#title', '#hud', '#ad', '#tip', '#panel-shop', '#panel-bag', '#panel-coupon', '#btn-act']) for (const ev of ['touchstart', 'touchmove']) $(el).addEventListener(ev, (e) => e.stopPropagation(), { passive: true });
 $('#t-date').textContent = `今日宝箱 ${chests.length} 个 · ${chests.filter(c => c.opened).length} 个已开`;
 $('#btn-act').onclick = () => { const c = nearestChest(); if (c) openChest(c); };
 window.addEventListener('keydown', (e) => { if (e.code === 'KeyE' && mode === 'play' && input.enabled) { const c = nearestChest(); if (c) openChest(c); else { const o = quests.nearestNpc(); if (o) quests.talk(o); } } });
 $('#h-shop').onclick = openShop;
+$('#h-album').onclick = () => meta.openAlbum();
+$('#h-myshop').onclick = () => meta.openShopPanel();
+$('#dm').onclick = () => meta.openDaily();
+$('#btn-collect').onclick = async () => { if (!meta.hasShop()) { meta.openShopPanel(); return; } const v = meta.collect(); if (v) AO.UI.toast(`🏪 小店收入 💰 +${v}`); else AO.UI.toast('还没攒到钱，过一会儿再来'); hud(); };
 $('#h-set').onclick = () => { $('#set-sound').checked = SET.sound; $('#set-shadow').checked = SET.shadow; $('#set-life').checked = SET.life; $('#panel-settings').classList.remove('hidden'); };
 $('#set-sound').onchange = (e) => { SET.sound = e.target.checked; saveSet(); };
 $('#set-shadow').onchange = (e) => { SET.shadow = e.target.checked; saveSet(); renderer.shadowMap.enabled = SET.shadow; scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => { m.needsUpdate = true; }); }); };
@@ -242,6 +252,7 @@ function drawMap() {
   const marks = [];
   for (const c of chests) if (!c.opened) marks.push({ x: c.x, z: c.z, color: '#ffd23f', r: 4 });
   for (const sp of sponsors) marks.push({ x: sp.b.x, z: sp.b.z, color: sp.color, r: 6 });
+  marks.push({ x: meta.stallPos.x, z: meta.stallPos.z, color: '#ffffff', r: 6, label: '🏪' });
   for (const o of quests.npcs) if (o.mark.visible) marks.push({ x: o.n.x, z: o.n.y, color: o.mark.material.map === quests.npcs[0].mark.material.map && AO.Quest.activeStepFor(o.n.id) ? '#7ec8ff' : (AO.Quest.activeStepFor(o.n.id) ? '#7ec8ff' : '#ff9f1c'), r: 5, label: AO.Quest.activeStepFor(o.n.id) ? '?' : '!' });
   const g = quests.guide(); if (g && g.x != null && !g.talk) marks.push({ x: g.x, z: g.z, color: '#ffb02e', r: 6, label: '★' });
   minimap.draw(player, marks);
@@ -255,15 +266,19 @@ function frame() {
     orbit += dt * 0.06; const R = 120; camera.position.set(SPAWN.x + Math.sin(orbit) * R, 85, SPAWN.z + Math.cos(orbit) * R); camera.lookAt(SPAWN.x, 0, SPAWN.z + 30);
     char.animate(dt, 0);
   } else {
-    const blocking = ['#ad', '#dialog', '#reward', '#panel-shop', '#panel-bag', '#panel-coupon', '#panel-quests', '#panel-settings', '#tip'].some(id => !$(id).classList.contains('hidden'));
+    const blocking = ['#ad', '#dialog', '#reward', '#panel-shop', '#panel-bag', '#panel-coupon', '#panel-quests', '#panel-settings', '#tip', '#panel-daily', '#panel-album', '#panel-card', '#panel-myshop'].some(id => !$(id).classList.contains('hidden'));
     input.enabled = !blocking && !quests.busy;
     if (input.enabled) player.update(dt, input, { onJump: () => Sfx.jump(), speedBoost: S().flags.car ? 1.5 : 1 });
     else { input.move.x = input.move.y = 0; player.speed = 0; char.animate(dt, 0); player.updateCamera(dt); }
     const near = input.enabled && nearestChest(); $('#btn-act').classList.toggle('hidden', !near);
-    const npc = input.enabled && !near && quests.nearestNpc();
+    const atStall = input.enabled && !near && meta.nearStall();
+    $('#btn-collect').classList.toggle('hidden', !atStall);
+    if (atStall) { const p = meta.shopPending(); $('#btn-collect').textContent = meta.hasShop() ? (p > 0 ? `💰 收小店的钱 +${p}` : '🏪 小店营业中') : '🏪 开一家自己的店'; }
+    const npc = input.enabled && !near && !atStall && quests.nearestNpc();
     $('#btn-talk').classList.toggle('hidden', !npc); if (npc) $('#btn-talk').textContent = `💬 和${npc.n.name}说话`;
     if (input.enabled) checkStamps();
     quests.update(dt, t, input.enabled);
+    meta.update(dt, t, input.enabled);
     hudT += dt; if (hudT > 0.1) { hudT = 0; compass(); drawMap(); }
   }
   const focus = mode === 'title' ? new THREE.Vector3(SPAWN.x, 0, SPAWN.z) : player.p;
@@ -280,4 +295,4 @@ function frame() {
 }
 if (/loop=timeout/.test(location.search)) setInterval(frame, 16); else renderer.setAnimationLoop(frame);
 $('#loading').classList.add('hidden');
-window.G = { quests, world, player, chests, sponsors, openChest, scene, camera, renderer, signs, day, input, setMode: (m) => { if (m === 'play') $('#btn-start').click(); } };
+window.G = { meta, quests, world, player, chests, sponsors, openChest, scene, camera, renderer, signs, day, input, setMode: (m) => { if (m === 'play') $('#btn-start').click(); } };
